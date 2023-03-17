@@ -102,6 +102,14 @@ public class ScrollUtils {
      * @return
      */
     static int getScrollTopOffset(View view) {
+        if (view.getParent() instanceof ConsecutiveScrollerLayout) {
+            ConsecutiveScrollerLayout parent = (ConsecutiveScrollerLayout) view.getParent();
+            int[] downLocation = parent.getCurrentLocation();
+            boolean isTouchSticky = isTouchStick(view, downLocation[0], downLocation[1]);
+            if (isTouchSticky) {
+                return 0;
+            }
+        }
         if (isConsecutiveScrollerChild(view) && canScrollVertically(view, -1)) {
             return Math.min(-computeVerticalScrollOffset(view), -1);
         } else {
@@ -116,6 +124,14 @@ public class ScrollUtils {
      * @return
      */
     static int getScrollBottomOffset(View view) {
+        if (view.getParent() instanceof ConsecutiveScrollerLayout) {
+            ConsecutiveScrollerLayout parent = (ConsecutiveScrollerLayout) view.getParent();
+            int[] downLocation = parent.getCurrentLocation();
+            boolean isTouchSticky = isTouchStick(view, downLocation[0], downLocation[1]);
+            if (isTouchSticky) {
+                return 0;
+            }
+        }
         if (isConsecutiveScrollerChild(view) && canScrollVertically(view, 1)) {
             return Math.max(computeVerticalScrollRange(view) - computeVerticalScrollOffset(view)
                     - computeVerticalScrollExtent(view), 1);
@@ -475,6 +491,24 @@ public class ScrollUtils {
                 if (!lp.isTriggerScroll) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 是否触摸吸顶view并且不能触发布局滑动
+     *
+     * @return
+     */
+    static boolean isTouchStick(View rootView, int touchX, int touchY) {
+        List<ConsecutiveScrollerLayout> csLayouts = getInTouchCSLayout(rootView, touchX, touchY);
+        int size = csLayouts.size();
+        for (int i = size - 1; i >= 0; i--) {
+            ConsecutiveScrollerLayout csl = csLayouts.get(i);
+            View topView = getTopViewInTouch(csl, touchX, touchY);
+            if (topView != null && csl.isStickyView(topView) && csl.theChildIsStick(topView)) {
+                return true;
             }
         }
         return false;

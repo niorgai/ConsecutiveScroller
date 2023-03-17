@@ -71,6 +71,14 @@ public class ViewPagerActivity extends AppCompatActivity {
                 scrollerLayout.setStickyOffset(offset);
             }
         });
+        scrollerLayout.setOnlyCheckTopView(true);
+        scrollerLayout.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Log.i("traceBug", "parent: " + scrollerLayout.hashCode());
+                scrollerLayout.scrollToChildWithOffset(scrollerLayout.getChildAt(1), 300);
+            }
+        }, 200);
     }
 
     // 提供给Fragment获取使用。

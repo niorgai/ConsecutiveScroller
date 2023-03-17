@@ -135,6 +135,13 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
     private final int[] mDownLocation = new int[2];
 
     /**
+     * 记录手指当前的位置
+     */
+    private final int[] mCurrentLocation = new int[2];
+
+    private boolean isOnlyCheckTopView = false;
+
+    /**
      * 是否处于状态
      */
     private boolean mTouching = false;
@@ -536,6 +543,14 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
         super.requestLayout();
     }
 
+    public int[] getCurrentLocation() {
+        return mCurrentLocation;
+    }
+
+    public void setOnlyCheckTopView(boolean onlyCheckTopView) {
+        isOnlyCheckTopView = onlyCheckTopView;
+    }
+
     private void sortViews() {
         List<View> list = new ArrayList<>();
         int count = getChildCount();
@@ -600,6 +615,8 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         final int actionIndex = ev.getActionIndex();
+        mCurrentLocation[0] = ScrollUtils.getRawX(this, ev, actionIndex);
+        mCurrentLocation[1] = ScrollUtils.getRawY(this, ev, actionIndex);
 
         if (SCROLL_ORIENTATION == SCROLL_HORIZONTAL) {
             // 如果是横向滑动，设置ev的y坐标始终为开始的坐标，避免子view自己消费了垂直滑动事件。
@@ -1141,7 +1158,7 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
             if (mScrollState == SCROLL_STATE_SETTLING && mScroller.isFinished()) {
                 // 滚动结束，校验子view内容的滚动位置
                 stopNestedScroll(ViewCompat.TYPE_NON_TOUCH);
-                checkTargetsScroll(false, false);
+//                checkTargetsScroll(false, false);
                 setScrollState(SCROLL_STATE_IDLE);
             }
         }
@@ -2200,6 +2217,18 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
      * @return
      */
     public View findLastVisibleView() {
+        if (isOnlyCheckTopView) {
+            int touchX = mCurrentLocation[0];
+            int touchY = mCurrentLocation[1];
+            List<ConsecutiveScrollerLayout> csLayouts = ScrollUtils.getInTouchCSLayout(this, touchX, touchY);
+            int size = csLayouts.size();
+            ConsecutiveScrollerLayout csl = csLayouts.get(size - 1);
+            View topView = ScrollUtils.getTopViewInTouch(csl, touchX, touchY);
+            if (topView != null && !"123".equals(topView.getTag())) {
+                return findFirstVisibleView();
+            }
+        }
+
         int offset = getHeight() - getPaddingBottom() + getScrollY();
         List<View> children = getEffectiveChildren();
         int count = children.size();
@@ -2209,6 +2238,7 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
                 return child;
             }
         }
+
         return null;
     }
 
@@ -2228,6 +2258,10 @@ public class ConsecutiveScrollerLayout extends ViewGroup implements ScrollingVie
             if (isScrollTop) {
                 for (int i = size - 1; i >= 0; i--) {
                     View view = children.get(i);
+                    if (isOnlyCheckTopView && view.getTop() > mCurrentLocation[1]) {
+                        // 如果只能检查触摸点上面的 View , 那触摸点以下的不参与计算
+                        continue;
+                    }
                     if (ScrollUtils.isConsecutiveScrollerChild(view)
                             && ScrollUtils.canScrollVertically(view, -1)) {
                         return false;
